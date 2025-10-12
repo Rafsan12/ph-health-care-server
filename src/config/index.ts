@@ -7,4 +7,9 @@ export default {
   node_env: process.env.NODE_ENV,
   port: process.env.PORT,
   database_url: process.env.DATABASE_URL,
+  passwordSalt: process.env.passwordSalt,
+  Cloudinary: {
+    API_KEY: process.env.Cloudinary_API_KEY,
+    API_SECRET: process.env.Cloudinary_API_SECRET,
+  },
 };

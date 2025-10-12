@@ -7,9 +7,14 @@ model User {
   status UserStatus @default(ACTIVE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+   Patient Patient[]
+  Doctor Doctor[]
+  Admin Admin[]
 
   @@map("users") 
   
+ 
+
 }
 
 model Admin{
@@ -21,7 +26,8 @@ model Admin{
   isDeleted Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
+  userId String @unique
+   user User @relation(fields: [userId], references: [id])
 
 @@map("admins")
 
@@ -44,7 +50,24 @@ model Doctor{
   isDeleted Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  userId String @unique
+   user User @relation(fields: [userId], references: [id])
 
 @@map("doctors")
 }
 
+model Patient {
+    id           String   @id @default(uuid())
+    email        String   @unique
+    name         String
+    profilePhoto String?
+    address      String?
+    isDeleted    Boolean  @default(false)
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+
+  userId String @unique
+   user User @relation(fields: [userId], references: [id])
+
+    @@map("patients")
+}
