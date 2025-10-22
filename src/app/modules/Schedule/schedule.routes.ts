@@ -5,12 +5,12 @@ import { ScheduleController } from "./schedule.controller";
 
 const router = Router();
 
-router.post("/", ScheduleController.insertInDB);
+router.post("/", auth(UserRole.ADMIN), ScheduleController.insertInDB);
 router.get(
   "/",
   auth(UserRole.DOCTOR, UserRole.ADMIN),
   ScheduleController.scheduleForDoctor
 );
-router.delete("/:id", ScheduleController.deleteSchedule);
+router.delete("/:id", auth(UserRole.ADMIN), ScheduleController.deleteSchedule);
 
 export const ScheduleRouter = router;
