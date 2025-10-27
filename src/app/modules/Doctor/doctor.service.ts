@@ -1,6 +1,10 @@
-import { Prisma } from "@prisma/client";
+import { Doctor, Prisma } from "@prisma/client";
+import { StatusCodes } from "http-status-codes";
 import { prisma } from "../../../utlis/prisma";
+import { openai } from "../../helper/askAI";
+import { extractJsonFromMessage } from "../../helper/extractJsonFromMessage";
 import { calculatePagination, TOption } from "../../helper/pagationHelper";
+import ApiError from "../../middlewares/ApiError";
 import { doctorSearchableFields } from "./doctor.constant";
 import { IDoctorInput } from "./doctor.interface";
 
@@ -66,42 +70,136 @@ const updateDoctor = async (id: string, payload: Partial<IDoctorInput>) => {
 
   const { specialties, ...doctorData } = payload;
 
-  if (specialties && specialties.length > 0) {
-    const deleteSpecialties = specialties.filter(
-      (specialty) => specialty.isDeleted
-    );
-    for (const specialty of deleteSpecialties) {
-      await prisma.doctorSpecialties.deleteMany({
-        where: {
-          doctorId: id,
-          specialitiesId: specialty.specialtyId,
-        },
-      });
+  return await prisma.$transaction(async (tnx) => {
+    if (specialties && specialties.length > 0) {
+      const deleteSpecialties = specialties.filter(
+        (specialty) => specialty.isDeleted
+      );
+      for (const specialty of deleteSpecialties) {
+        await tnx.doctorSpecialties.deleteMany({
+          where: {
+            doctorId: id,
+            specialitiesId: specialty.specialtyId,
+          },
+        });
+      }
+      const createSpecialties = specialties.filter(
+        (specialty) => !specialty.isDeleted
+      );
+      for (const specialty of createSpecialties) {
+        await tnx.doctorSpecialties.create({
+          data: {
+            doctorId: id,
+            specialitiesId: specialty.specialtyId,
+          },
+        });
+      }
     }
-    const createSpecialties = specialties.filter(
-      (specialty) => !specialty.isDeleted
-    );
-    for (const specialty of createSpecialties) {
-      await prisma.doctorSpecialties.create({
-        data: {
-          doctorId: id,
-          specialitiesId: specialty.specialtyId,
+    const updateData = await tnx.doctor.update({
+      where: {
+        id: doctorInfo.id,
+      },
+      data: doctorData,
+      include: {
+        doctorSpecialties: true,
+      },
+    });
+    return updateData;
+  });
+};
+
+const getDoctorById = async (id: string): Promise<Doctor | null> => {
+  const getDoctor = await prisma.doctor.findUnique({
+    where: {
+      id,
+      isDeleted: false,
+    },
+    include: {
+      doctorSpecialties: {
+        include: {
+          specialities: true,
         },
-      });
-    }
+      },
+      doctorSchedule: {
+        include: {
+          schedule: true,
+        },
+      },
+    },
+  });
+  return getDoctor;
+};
+
+const getAiSuggestions = async (payload: { symptoms: string }) => {
+  if (!(payload && payload.symptoms)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Symptoms is required");
   }
 
-  const updateData = await prisma.doctor.update({
+  const doctors = await prisma.doctor.findMany({
     where: {
-      id: doctorInfo.id,
+      isDeleted: false,
     },
-    data: doctorData,
+    include: {
+      doctorSpecialties: {
+        include: {
+          specialities: true,
+        },
+      },
+    },
+  });
+  console.log(doctors);
+
+  // Convert doctors to a cleaner structure for the AI
+  const doctorData = doctors.map((doc) => ({
+    name: doc.name,
+    experience: doc.experience,
+    specialties: doc.doctorSpecialties.map((s) => s.specialities),
+  }));
+
+  // Build the AI prompt
+  // Simplify doctor data before sending to the model
+  const doctorList = doctors.map((doc) => ({
+    id: doc.id,
+    name: doc.name,
+    experience: doc.experience,
+    specialties: doc.doctorSpecialties.map((s) => s.specialities),
+  }));
+
+  console.log("doctor data loaded \n");
+  const prompt = `
+You are a medical assistant AI. Based on the patient's symptoms, suggest the top 3 most suitable doctors.
+Each doctor has specialties and years of experience.
+Only suggest doctors who are relevant to the given symptoms.
+
+Symptoms: ${payload.symptoms}
+
+Here is the doctor list (in JSON):
+${JSON.stringify(doctorList, null, 2)}
+
+Return your response in pure JSON format with full individual doctor data.
+
+`;
+
+  console.log("analyzing... \n");
+  const completion = await openai.chat.completions.create({
+    model: "z-ai/glm-4.5-air:free",
+    messages: [
+      { role: "system", content: "You are a helpful AI medical assistant..." },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
   });
 
-  return updateData;
+  const result = await extractJsonFromMessage(completion.choices[0].message);
+  console.log(completion.choices[0].message);
+  return result;
 };
 
 export const DoctorService = {
   getAllDoctors,
   updateDoctor,
+  getAiSuggestions,
+  getDoctorById,
 };

@@ -13,4 +13,6 @@ export default {
     API_SECRET: process.env.Cloudinary_API_SECRET,
   },
   ACCESS_TOKEN: process.env.JWT_ACCESS_TOKEN as string,
+  OPEN_ROUTER_API_KEY: process.env.OPEN_ROUTER_API_KEY as string,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY as string,
 };

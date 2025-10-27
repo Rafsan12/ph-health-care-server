@@ -31,7 +31,33 @@ const updateDoctor = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getDoctorById = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const result = await DoctorService.getDoctorById(id);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Doctor retrieval successfully",
+    data: result,
+  });
+});
+
+const getAiSuggestions = catchAsync(async (req: Request, res: Response) => {
+  const result = await DoctorService.getAiSuggestions(req.body);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Ai Doctor fetch Successfully",
+    data: result,
+  });
+});
+
 export const DoctorController = {
   getAllDoctors,
   updateDoctor,
+  getAiSuggestions,
+  getDoctorById,
 };

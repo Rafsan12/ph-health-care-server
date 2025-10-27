@@ -1,7 +1,9 @@
 import { Router } from "express";
+import { AppointmentRouter } from "../modules/Appointment/appointemt.routes";
 import { AuthRouter } from "../modules/Auth/auth.routes";
 import { DoctorScheduleRouter } from "../modules/Doctor-Schedule/doctorSchedule.routes";
 import { DoctorRouter } from "../modules/Doctor/doctor.router";
+import { PaymentRouter } from "../modules/Payment/payment.router";
 import { ScheduleRouter } from "../modules/Schedule/schedule.routes";
 import { UserRouter } from "../modules/User/user.routes";
 import { SpecialtiesRoutes } from "../modules/specialties/specialties.routes";
@@ -32,6 +34,14 @@ const moduleRouter = [
   {
     path: "/doctor",
     route: DoctorRouter,
+  },
+  {
+    path: "/appointment",
+    route: AppointmentRouter,
+  },
+  {
+    path: "/payment",
+    route: PaymentRouter,
   },
 ];
 
